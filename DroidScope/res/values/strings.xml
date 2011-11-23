@@ -5,6 +5,14 @@
     <string name="hello">Hello World, Main!</string>
     <string name="app_name">DroidScope</string>
     
+     <!--  BluetoothChat -->
+    <string name="send">Send</string>
+    <string name="not_connected">You are not connected to a device</string>
+    <string name="bt_not_enabled_leaving">Bluetooth was not enabled. Leaving Bluetooth Chat.</string>
+    <string name="title_connecting">connecting...</string>
+    <string name="title_connected_to">connected: </string>
+    <string name="title_not_connected">not connected</string>
+    
     <!-- DeviceListActivity -->
 	<string name="scanning">scanning for devices...</string>
 	<string name="select_device">select a device to connect</string>
