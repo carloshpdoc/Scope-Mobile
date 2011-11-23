@@ -18,7 +18,6 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
-
 import com.uerj.droidscope.core.BluetoothService;
 import com.uerj.droidscope.screens.GraphSensor;
 import com.uerj.droidscope.utils.DeviceListActivity;
@@ -39,12 +38,13 @@ public class Main extends Activity {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		Log.e(Globals.TAG, "+ ON CREATE +");
 		setContentView(R.layout.main);
 		pwm = (SeekBar)findViewById(R.id.pwm);
 		led = (ToggleButton)findViewById(R.id.led);
 		sensor = (TextView)findViewById(R.id.txt);
 		graph = (Button)findViewById(R.id.btGraph);
-		
+
 		mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 		if (mBluetoothAdapter == null) {
 			Toast.makeText(this, "Bluetooth is not available", Toast.LENGTH_LONG).show();
@@ -57,11 +57,13 @@ public class Main extends Activity {
 	@Override
 	protected void onStart() {
 		super.onStart();
+		Log.e(Globals.TAG, "+ ON START +");
 		if (!mBluetoothAdapter.isEnabled()) {
 			Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-			startActivityForResult(enableIntent, 1);
+			startActivityForResult(enableIntent, Globals.REQUEST_ENABLE_BT);
 		} else {
-			mBluetoothService = new BluetoothService(this,handler);
+			Log.i(Globals.TAG,"Criando o service!!");
+			if(mBluetoothService==null) mBluetoothService = new BluetoothService(this,handler);
 		}
 	}
 
@@ -70,64 +72,64 @@ public class Main extends Activity {
 		super.onResume();
 		Log.e(Globals.TAG, "+ ON RESUME +");
 		if (mBluetoothService != null) {
+			Log.i(Globals.TAG,"Entrou aqui o service!!");
 			if (mBluetoothService.getState() == Globals.STATE_NONE) {
 				mBluetoothService.start();
 			}
-		}
 
-		led.setOnCheckedChangeListener(new OnCheckedChangeListener() {
-			
-			@Override
-			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-				if(isChecked){
-					mBluetoothService.write("A".getBytes());
-				}else{
-					mBluetoothService.write("C".getBytes());
-				}				
-			}
-		});
-		
-		pwm.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+			led.setOnCheckedChangeListener(new OnCheckedChangeListener() {
 
-			@Override
-			public void onStopTrackingTouch(SeekBar seekBar) {
-
-			}
-
-			@Override
-			public void onStartTrackingTouch(SeekBar seekBar) {
-				
-			}
-
-			@Override
-			public void onProgressChanged(SeekBar seekBar, int progress,
-					boolean fromUser) {
-				int value = seekBar.getProgress();
-				String valueStr;
-				if(value<10){
-					valueStr = "R00"+String.valueOf(value);
-				}else if(value<100){
-					valueStr = "R0"+String.valueOf(value);
-				}else{
-					valueStr = "R"+String.valueOf(value);
+				@Override
+				public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+					if(isChecked){
+						mBluetoothService.write("A".getBytes());
+					}else{
+						mBluetoothService.write("C".getBytes());
+					}				
 				}
-				mBluetoothService.write(valueStr.getBytes());
-				Log.i(Globals.TAG,valueStr);
-			}
-		});
-		
-		graph.setOnClickListener(new View.OnClickListener() {
-			
-			@Override
-			public void onClick(View v) {
-				Intent intent = new Intent(v.getContext(), GraphSensor.class);
-				startActivity(intent);
-				finish();
-			}
-		});
+			});
+
+			pwm.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+
+				@Override
+				public void onStopTrackingTouch(SeekBar seekBar) {
+
+				}
+
+				@Override
+				public void onStartTrackingTouch(SeekBar seekBar) {
+
+				}
+
+				@Override
+				public void onProgressChanged(SeekBar seekBar, int progress,
+						boolean fromUser) {
+					int value = seekBar.getProgress();
+					String valueStr;
+					if(value<10){
+						valueStr = "R00"+String.valueOf(value);
+					}else if(value<100){
+						valueStr = "R0"+String.valueOf(value);
+					}else{
+						valueStr = "R"+String.valueOf(value);
+					}
+					mBluetoothService.write(valueStr.getBytes());
+					Log.i(Globals.TAG,valueStr);
+				}
+			});
+
+			graph.setOnClickListener(new View.OnClickListener() {
+
+				@Override
+				public void onClick(View v) {
+					Intent intent = new Intent(v.getContext(), GraphSensor.class);
+					startActivity(intent);
+					finish();
+				}
+			});
+		}
 	}
-	
-	
+
 	@Override
 	protected void onPause() {
 		super.onPause();
@@ -146,10 +148,24 @@ public class Main extends Activity {
 	
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-		super.onActivityResult(requestCode, resultCode, data);
-		address = data.getStringExtra(Globals.EXTRA_DEVICE_ADDRESS);
-		BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
-		mBluetoothService.connect(device);
+		switch (requestCode) {
+		case Globals.REQUEST_CONNECT_DEVICE:
+			if (resultCode == Activity.RESULT_OK) {
+				address = data.getStringExtra(Globals.EXTRA_DEVICE_ADDRESS);
+				if(address!=null){
+					BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
+					mBluetoothService.connect(device);
+				}
+			}
+		case Globals.REQUEST_ENABLE_BT:
+			if (resultCode == Activity.RESULT_OK) {
+				mBluetoothService = new BluetoothService(this,handler);
+			} else {
+				Log.d(Globals.TAG, "BT not enabled");
+				Toast.makeText(this, R.string.bt_not_enabled_leaving, Toast.LENGTH_SHORT).show();
+				finish();
+			}
+		}
 	}
 
 	@Override
@@ -164,7 +180,7 @@ public class Main extends Activity {
 		switch (item.getItemId()) {
 		case R.id.scan:
 			Intent serverIntent = new Intent(this, DeviceListActivity.class);
-			startActivityForResult(serverIntent, 1);
+			startActivityForResult(serverIntent, Globals.REQUEST_CONNECT_DEVICE);
 			return true;
 		case R.id.discoverable:
 			ensureDiscoverable();
